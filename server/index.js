@@ -144,8 +144,10 @@ app.post('/login', async (req, res) => {
       // Redirect to appropriate dashboard based on user type
       if (user.srn) {
         return res.status(200).json({ redirect: `/student-dashboard?srn=${user.srn}` });
-      } else {
-        return res.status(200).json({ redirect: `/placement-officer-dashboard?officer_id=${user.officer_id}` });
+      } else 
+      {
+        //console.log(user.officer_id)
+        return res.status(200).json({ redirect: `/placement-officer-dashboard` });
       }
     } catch (err) {
       console.error('Error during login:', err);
@@ -160,7 +162,7 @@ app.get('/student-dashboard', (req, res) => {
     if (!srn) {
       return res.status(400).json({ error: 'SRN is required' });
     }
-  
+    
     const sql = `
       SELECT s.*, a.*, jp.description AS job_description, jp.company_name 
       FROM STUDENT s

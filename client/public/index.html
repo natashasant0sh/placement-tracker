@@ -170,36 +170,39 @@
         function handleLogin() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            console.log("frontend user and pass");
+            console.log(username, password);
 
             if (!username || !password) {
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Please fill in all fields!',
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Please fill in all fields!',
                 });
                 return;
             }
 
             axios.post('/login', { username, password })
                 .then(response => {
-                    localStorage.setItem('token', response.data.token);
+                console.log("Login Response:", response.data); // Log the response for debugging
+
+                if (response.data.redirect) {
+                    window.location.href = response.data.redirect;
+                } else {
                     Swal.fire({
-                        icon: 'success',
-                        title: 'Login Successful!',
-                        showConfirmButton: false,
-                        timer: 1500
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Invalid login response.'
                     });
-                    setTimeout(() => {
-                        window.location.href = `/dashboard/${username.startsWith('PES') ? 'student' : 'placement_officer'}`;
-                    }, 1500);
+                }
                 })
                 .catch(error => {
-                    console.error('Error during login:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Oops...',
-                        text: 'Invalid username or password!',
-                    });
+                console.error('Error during login:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Invalid username or password!',
+                });
                 });
         }
 

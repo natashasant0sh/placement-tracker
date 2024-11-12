@@ -1,7 +1,6 @@
 const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: '../.env' });
@@ -32,25 +31,38 @@ app.post('/signup/student', async (req, res) => {
 
   try {
     // Check if srn already exists
-    const [rows] = await db.promise().execute('SELECT * FROM STUDENT WHERE srn = ?', [srn]);
-    if (rows.length > 0) {
-      return res.status(400).json({ error: 'SRN already exists' });
-    }
+    const sql = 'SELECT * FROM STUDENT WHERE srn = ?';
+    db.query(sql, [srn], (err, rows) => {
+      if (err) {
+        console.error('Error checking SRN:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (rows.length > 0) {
+        return res.status(400).json({ error: 'SRN already exists' });
+      }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert new student into database
-    const [result] = await db.promise().execute(
-      'INSERT INTO STUDENT (srn, name, email, cgpa, year_of_grad, phone, password) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [srn, name, email, cgpa, year_of_grad, phone, hashedPassword]
-    );
-
-    if (result.affectedRows === 1) {
-      return res.status(201).json({ message: 'User created successfully' });
-    } else {
-      return res.status(500).json({ error: 'Error creating user' });
-    }
+      // Hash the password
+      bcrypt.hash(password, 10)
+        .then(hashedPassword => {
+          // Insert new student into database
+          const insertSql = 'INSERT INTO STUDENT (srn, name, email, cgpa, year_of_grad, phone, password) VALUES (?, ?, ?, ?, ?, ?, ?)';
+          db.query(insertSql, [srn, name, email, cgpa, year_of_grad, phone, hashedPassword], (err, result) => {
+            if (err) {
+              console.error('Error creating student:', err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+            if (result.affectedRows === 1) {
+              return res.status(201).json({ message: 'User created successfully' });
+            } else {
+              return res.status(500).json({ error: 'Error creating user' });
+            }
+          });
+        })
+        .catch(err => {
+          console.error('Error hashing password:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        });
+    });
   } catch (err) {
     console.error('Error during signup:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -63,25 +75,38 @@ app.post('/signup/placement_officer', async (req, res) => {
 
   try {
     // Check if officer_id already exists
-    const [rows] = await db.promise().execute('SELECT * FROM PLACEMENT_OFFICER WHERE officer_id = ?', [officer_id]);
-    if (rows.length > 0) {
-      return res.status(400).json({ error: 'Officer ID already exists' });
-    }
+    const sql = 'SELECT * FROM PLACEMENT_OFFICER WHERE officer_id = ?';
+    db.query(sql, [officer_id], (err, rows) => {
+      if (err) {
+        console.error('Error checking Officer ID:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (rows.length > 0) {
+        return res.status(400).json({ error: 'Officer ID already exists' });
+      }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert new placement officer into database
-    const [result] = await db.promise().execute(
-      'INSERT INTO PLACEMENT_OFFICER (officer_id, dept, name, email, password) VALUES (?, ?, ?, ?, ?)',
-      [officer_id, dept, name, email, hashedPassword]
-    );
-
-    if (result.affectedRows === 1) {
-      return res.status(201).json({ message: 'Placement Officer created successfully' });
-    } else {
-      return res.status(500).json({ error: 'Error creating Placement Officer' });
-    }
+      // Hash the password
+      bcrypt.hash(password, 10)
+        .then(hashedPassword => {
+          // Insert new placement officer into database
+          const insertSql = 'INSERT INTO PLACEMENT_OFFICER (officer_id, dept, name, email, password) VALUES (?, ?, ?, ?, ?)';
+          db.query(insertSql, [officer_id, dept, name, email, hashedPassword], (err, result) => {
+            if (err) {
+              console.error('Error creating placement officer:', err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+            if (result.affectedRows === 1) {
+              return res.status(201).json({ message: 'Placement Officer created successfully' });
+            } else {
+              return res.status(500).json({ error: 'Error creating Placement Officer' });
+            }
+          });
+        })
+        .catch(err => {
+          console.error('Error hashing password:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        });
+    });
   } catch (err) {
     console.error('Error during signup:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -90,74 +115,99 @@ app.post('/signup/placement_officer', async (req, res) => {
 
 // Login route
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    let user;
-    // Check if student
-    const [studentRows] = await db.promise().execute('SELECT * FROM STUDENT WHERE srn = ?', [username]);
-    if (studentRows.length > 0) {
-      user = studentRows[0];
-    } else {
-      // Check if placement officer
-      const [officerRows] = await db.promise().execute('SELECT * FROM PLACEMENT_OFFICER WHERE officer_id = ?', [username]);
-      if (officerRows.length > 0) {
-        user = officerRows[0];
+    const { username, password } = req.body;
+  
+    try {
+      let user;
+      // Check if student
+      const [studentRows] = await db.promise().execute('SELECT * FROM STUDENT WHERE srn = ?', [username]);
+      if (studentRows.length > 0) {
+        user = studentRows[0];
       } else {
+        // Check if placement officer
+        const [officerRows] = await db.promise().execute('SELECT * FROM PLACEMENT_OFFICER WHERE officer_id = ?', [username]);
+        if (officerRows.length > 0) {
+          user = officerRows[0];
+        } else {
+          return res.status(401).json({ error: 'Invalid username or password' });
+        }
+      }
+  
+      // Compare password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
         return res.status(401).json({ error: 'Invalid username or password' });
       }
+  
+      // Redirect to appropriate dashboard based on user type
+      if (user.srn) {
+        return res.status(200).json({ redirect: `/student-dashboard?srn=${user.srn}` });
+      } else {
+        return res.status(200).json({ redirect: `/placement-officer-dashboard?officer_id=${user.officer_id}` });
+      }
+    } catch (err) {
+      console.error('Error during login:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
+  });
 
-    // Compare password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid username or password' });
+  // Modify the student-dashboard route in index.js
+app.get('/student-dashboard', (req, res) => {
+    const { srn } = req.query;
+    
+    if (!srn) {
+      return res.status(400).json({ error: 'SRN is required' });
     }
+  
+    const sql = `
+      SELECT s.*, a.*, jp.description AS job_description, jp.company_name 
+      FROM STUDENT s
+      LEFT JOIN APPLICATION a ON s.srn = a.srn
+      LEFT JOIN JOB_POSTING jp ON a.job_id = jp.job_id 
+      WHERE s.srn = ?
+    `;
+  
+    db.query(sql, [srn], (err, rows) => {
+      if (err) {
+        console.error('Error fetching student dashboard data:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+  
+      // Group the results
+      const groupedData = {
+        studentData: {
+          srn: rows[0].srn,
+          name: rows[0].name,
+          email: rows[0].email,
+          cgpa: rows[0].cgpa,
+          year_of_grad: rows[0].year_of_grad,
+          phone: rows[0].phone
+        },
+        applications: rows.filter(row => row.app_id).map(row => ({
+          app_id: row.app_id,
+          job_id: row.job_id,
+          company_name: row.company_name,
+          job_description: row.job_description,
+          app_status: row.app_status,
+          app_date: row.app_date,
+          offer_status: row.offer_status
+        }))
+      };
+  
+      // Determine if this is an API request or a page request
+      const isApiRequest = req.headers.accept && req.headers.accept.includes('application/json');
+      
+      if (isApiRequest) {
+        // If it's an API request, send JSON
+        res.json(groupedData);
+      } else {
+        // If it's a page request, send the HTML file
+        res.sendFile(path.join(__dirname, '../client/public/student_dashboard.html'));
+      }
+    });
+  });
 
-    // Generate JWT token
-    const token = jwt.sign({ username: user.srn || user.officer_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    return res.status(200).json({ token });
-  } catch (err) {
-    console.error('Error during login:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-};
-
-// Student dashboard route
-app.get('/dashboard/student', verifyToken, (req, res) => {
-  // Logic to fetch student-specific data (e.g., applications, notifications)
-  res.send('This is the Student Dashboard');
-});
-
-// Placement Officer dashboard route
-app.get('/dashboard/placement_officer', verifyToken, (req, res) => {
-  // Logic to fetch placement officer-specific data (e.g., company details, job postings)
-  res.send('This is the Placement Officer Dashboard');
-})
-
-// Protected route (example)
-app.get('/protected', verifyToken, (req, res) => {
-  res.status(200).json({ message: 'This is a protected route', user: req.user });
-});
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server listening on port ${process.env.PORT || 3000}`);

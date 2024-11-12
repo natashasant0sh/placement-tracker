@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Placement Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div id="root">
+            <div class="flex justify-center items-center h-screen">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Fetch dashboard data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const srn = urlParams.get('srn');
+            
+            if (!srn) {
+                window.location.href = '/'; // Redirect to home if no SRN
+                return;
+            }
+
+            fetchDashboardData(srn);
+        });
+
+        function fetchDashboardData(srn) {
+            axios.get(`/student-dashboard?srn=${srn}`)
+                .then(response => {
+                    console.log('Dashboard data:', response.data);
+                    renderDashboard(response.data.studentData, response.data.applications);
+                })
+                .catch(error => {
+                    console.error('Error fetching dashboard data:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to load dashboard data. Please try again.',
+                    });
+                });
+        }
+
+        function renderDashboard(userData, applications) {
+            const root = document.getElementById('root');
+            const dashboardHTML = `
+                <div class="max-w-7xl mx-auto">
+                    <!-- Header Section -->
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-3xl font-bold text-gray-800">Student Dashboard</h1>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                            Logout
+                        </button>
+                    </div>
+
+                    <!-- Student Info Card -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                        <h2 class="text-xl font-bold mb-4 text-gray-800">Student Information</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-gray-600">Name: <span class="font-semibold">${userData.name}</span></p>
+                                <p class="text-gray-600">SRN: <span class="font-semibold">${userData.srn}</span></p>
+                                <p class="text-gray-600">Email: <span class="font-semibold">${userData.email}</span></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">CGPA: <span class="font-semibold">${userData.cgpa}</span></p>
+                                <p class="text-gray-600">Graduation Year: <span class="font-semibold">${userData.year_of_grad}</span></p>
+                                <p class="text-gray-600">Phone: <span class="font-semibold">${userData.phone}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Applications Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                        <h2 class="text-xl font-bold mb-4 text-gray-800">My Applications</h2>
+                        ${applications.length > 0 ? `
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full table-auto">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Application Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        ${applications.map(app => `
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.company_name}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.job_description}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                        ${app.app_status}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    ${new Date(app.app_date).toLocaleDateString()}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.offer_status}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `
+                            <p class="text-gray-500">No applications found.</p>
+                        `}
+                    </div>
+                </div>
+            `;
+            
+            root.innerHTML = dashboardHTML;
+        }
+
+        function logout() {
+            // Clear any stored session data
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Redirect to home page
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

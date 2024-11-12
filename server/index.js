@@ -142,8 +142,10 @@ app.post('/login', async (req, res) => {
       // Redirect to appropriate dashboard based on user type
       if (user.srn) {
         return res.status(200).json({ redirect: `/student-dashboard?srn=${user.srn}` });
-      } else {
-        return res.status(200).json({ redirect: `/placement-officer-dashboard?officer_id=${user.officer_id}` });
+      } else 
+      {
+        //console.log(user.officer_id)
+        return res.status(200).json({ redirect: `/placement-officer-dashboard` });
       }
     } catch (err) {
       console.error('Error during login:', err);
@@ -158,7 +160,7 @@ app.get('/student-dashboard', (req, res) => {
     if (!srn) {
       return res.status(400).json({ error: 'SRN is required' });
     }
-  
+    
     const sql = `
       SELECT s.*, a.*, jp.description AS job_description, jp.company_name 
       FROM STUDENT s
@@ -206,6 +208,65 @@ app.get('/student-dashboard', (req, res) => {
       }
     });
   });
+
+
+// Placement Officer Dashboard route
+app.get('/placement-officer-dashboard', (req, res) => {
+  // const { officer_id } = req.query;
+
+  // if (!officer_id) {
+  //   return res.status(400).json({ error: 'Officer ID is required' });
+  // }
+
+  // Send the HTML file for the placement officer dashboard
+  res.sendFile(path.join(__dirname, '../client/public/placement_officer_dashboard.html'));
+});
+
+
+
+// Route to search for student applications
+app.get('/placement-officer-dashboard/search', (req, res) => {
+  const { srn, job_id } = req.query;
+
+  if (!srn) {
+    return res.status(400).json({ error: 'SRN is required' });
+  }
+
+  const sql = `
+    SELECT a.*, jp.description AS job_description, jp.company_name 
+    FROM APPLICATION a
+    LEFT JOIN JOB_POSTING jp ON a.job_id = jp.job_id 
+    WHERE a.srn = ? AND (jp.job_id = ? OR ? IS NULL)
+  `;
+
+  db.query(sql, [srn, job_id, job_id], (err, rows) => {
+    if (err) {
+      console.error('Error fetching student applications:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    res.json({ applications: rows });
+  });
+});
+
+
+// Route to create a new job posting
+app.post('/job-posting', (req, res) => {
+  const { job_id, company_name, description, requirements } = req.body;
+
+  const sql = `
+      INSERT INTO JOB_POSTING (job_id, company_name, description, requirements)
+      VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [job_id, company_name, description, requirements], (err, result) => {
+      if (err) {
+          console.error('Error creating job posting:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+      }
+      res.status(201).json({ message: 'Job posting created successfully' });
+  });
+});
 
 
 

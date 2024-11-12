@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Placement Officer Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Placement Officer Dashboard</h1>
+
+    <div>
+        <h2>Search Student</h2>
+        <label>SRN:</label>
+        <input type="text" id="srnInput" />
+        <label>Job ID (Optional):</label>
+        <input type="text" id="jobIdInput" />
+        <button onclick="searchStudentApplications()">Search</button>
+    </div>
+
+    <div>
+        <h2>Search Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>App ID</th>
+                    <th>Job ID</th>
+                    <th>App Status</th>
+                    <th>App Date</th>
+                    <th>Offer Status</th>
+                </tr>
+            </thead>
+            <tbody id="resultsTable"></tbody>
+        </table>
+    </div>
+
+    <div>
+        <h2>Create Job Posting</h2>
+        <label>Job ID:</label>
+        <input type="text" id="newJobId" />
+        <label>Company Name:</label>
+        <input type="text" id="companyName" />
+        <label>Description:</label>
+        <input type="text" id="description" />
+        <label>Requirements:</label>
+        <input type="text" id="requirements" />
+        <button onclick="createJobPosting()">Create Job Posting</button>
+    </div>
+
+    <script>
+        function searchStudentApplications() {
+            const srn = document.getElementById('srnInput').value;
+            const job_id = document.getElementById('jobIdInput').value;
+
+            axios.get(`/placement-officer-dashboard/search?srn=${srn}&job_id=${job_id}`)
+                .then(response => {
+                    const applications = response.data.applications;
+                    const tableBody = document.getElementById('resultsTable');
+
+                    // Clear the table first
+                    tableBody.innerHTML = '';
+
+                    if (applications.length === 0) {
+                        alert("No applications found for the given SRN.");
+                        return;
+                    }
+
+                    // Populate the table with applications data
+                    tableBody.innerHTML = applications.map(app => `
+                        <tr>
+                            <td>${app.app_id}</td>
+                            <td>${app.job_id}</td>
+                            <td>${app.app_status}</td>
+                            <td>${new Date(app.app_date).toLocaleDateString()}</td>
+                            <td>${app.offer_status}</td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error fetching student applications:', error);
+                    alert('An error occurred while fetching student applications.');
+                });
+        }
+
+        function createJobPosting() {
+            const job_id = document.getElementById('newJobId').value;
+            const company_name = document.getElementById('companyName').value;
+            const description = document.getElementById('description').value;
+            const requirements = document.getElementById('requirements').value;
+
+            axios.post('/job-posting', { job_id, company_name, description, requirements })
+                .then(response => {
+                    alert(response.data.message);
+                })
+                .catch(error => {
+                    console.error('Error creating job posting:', error);
+                    alert('An error occurred while creating job posting.');
+                });
+        }
+    </script>
+</body>
+</html>
+

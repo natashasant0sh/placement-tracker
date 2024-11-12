@@ -8,7 +8,9 @@ require('dotenv').config({ path: '../.env' });
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/public')));
+app.use(express.static(path.join(__dirname, '../client/public/')));
+app.use(express.static(path.join(__dirname, '../client/src/')));
+
 
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -207,7 +209,33 @@ app.get('/student-dashboard', (req, res) => {
     });
   });
 
+  app.put('/update-offer-status', (req, res) => {
+    const { appId, offerStatus } = req.body;
+    
+    const sql = `
+        UPDATE APPLICATION 
+        SET offer_status = ? 
+        WHERE app_id = ?
+    `;
+    
+    db.query(sql, [offerStatus, appId], (err, result) => {
+        if (err) {
+            console.error('Error updating offer status:', err);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Failed to update offer status' 
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Offer status updated successfully' 
+        });
+    });
+});
 
+const jobPostingsRouter = require('./job_postings');
+app.use('/job-postings', jobPostingsRouter);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server listening on port ${process.env.PORT || 3000}`);

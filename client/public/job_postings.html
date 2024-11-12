@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Postings - Placement Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div id="root">
+            <div class="flex justify-center items-center h-screen">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const srn = urlParams.get('srn');
+            
+            if (!srn) {
+                window.location.href = '/';
+                return;
+            }
+
+            fetchJobPostings(srn);
+        });
+
+        async function fetchJobPostings(srn) {
+            try {
+                const response = await axios.get('/job-postings');
+                renderJobPostings(response.data, srn);
+            } catch (error) {
+                console.error('Error fetching job postings:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to load job postings. Please try again.',
+                });
+            }
+        }
+
+        function renderJobPostings(jobPostings, srn) {
+            const root = document.getElementById('root');
+            const jobPostingsHTML = `
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-3xl font-bold text-gray-800">Available Job Postings</h1>
+                        <a href="/student-dashboard?srn=${srn}" 
+                        class="text-blue-500 font-semibold hover:underline">
+                        Back to Dashboard
+                        </a>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${jobPostings.map(job => `
+                            <div class="bg-white rounded-lg shadow-md p-6">
+                                <h2 class="text-xl font-bold mb-4 text-gray-800">${job.company_name}</h2>
+                                <p class="text-gray-600">
+                                    <span class="font-semibold">Position:</span> ${job.description}
+                                </p>
+                                <p class="text-gray-600">
+                                    <span class="font-semibold">Salary:</span> ${job.salary}
+                                </p>
+                                <p class="text-gray-600">
+                                    <span class="font-semibold">Deadline:</span> ${new Date(job.deadline).toLocaleDateString()}
+                                </p>
+                                <a href="${job.link}" target="_blank" class="text-blue-500 font-semibold hover:underline">View Details</a>
+                                <button onclick="window.checkApplication(${job.job_id}, '${srn}')" 
+                                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+                                    Apply
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            root.innerHTML = jobPostingsHTML;
+        }
+
+
+        window.checkApplication = async function(jobId, srn) {
+                try {
+                    const response = await axios.post('/job-postings/check-application', { srn, jobId });
+                    if (response.data.hasApplied) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Application Found',
+                            text: 'You have already applied for this job.'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Apply for Job',
+                            html: `
+                                <input type="hidden" id="srn" value="${srn}">
+                                <input type="hidden" id="jobId" value="${jobId}">
+                                <button onclick="window.applyForJob()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                    Apply
+                                </button>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Submit',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.applyForJob();
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error checking application:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to check application status. Please try again.'
+                    });
+                }
+            }
+
+            window.applyForJob = async function() {
+                const srn = document.getElementById('srn').value;
+                const jobId = document.getElementById('jobId').value;
+
+                try {
+                    const response = await axios.post('/job-postings/apply', { srn, jobId });
+                    if (response.data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Application Submitted',
+                            text: 'Your application has been successfully submitted.'
+                        }).then(() => {
+                            window.location.reload(); 
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to submit application. Please try again.'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error applying for job:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to submit application. Please try again.'
+                    });
+                }
+            }
+
+
+        
+        
+    </script>
+</body>
+</html>

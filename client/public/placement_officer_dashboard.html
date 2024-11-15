@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placement Officer Dashboard - Placement Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Placement Officer Dashboard</h1>
+            
+            <div class="flex items-center space-x-4">
+                <button onclick="window.location.href='/job-postings-po'" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    View Job Postings
+                </button>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    Logout
+                </button>
+            </div>
+        </div>
+        
+        
+        <!-- Search Student Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Search Student</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-gray-600">SRN:</label>
+                    <input type="text" id="srnInput" class="w-full p-2 border rounded mt-1" placeholder="Enter SRN" />
+                </div>
+                <div>
+                    <label class="text-gray-600">Job ID (Optional):</label>
+                    <input type="text" id="jobIdInput" class="w-full p-2 border rounded mt-1" placeholder="Enter Job ID" />
+                </div>
+                
+            </div>
+            <button onclick="searchStudentApplications()" class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Search</button>
+        </div>
+
+        <!-- Search Results Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Search Results</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">App ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">App Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">App Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offer Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTable" class="bg-white divide-y divide-gray-200">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Create Job Posting Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Create Job Posting</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-gray-600">Job ID:</label>
+                    <input type="text" id="newJobId" class="w-full p-2 border rounded mt-1" placeholder="Enter Job ID" />
+                </div>
+                <div>
+                    <label class="text-gray-600">Company Name:</label>
+                    <input type="text" id="companyName" class="w-full p-2 border rounded mt-1" placeholder="Enter Company Name" />
+                </div>
+                <div>
+                    <label class="text-gray-600">Description:</label>
+                    <input type="text" id="description" class="w-full p-2 border rounded mt-1" placeholder="Enter Job Description" />
+                </div>
+
+                <div>
+                    <label class="text-gray-600">Salary:</label>
+                    <input type="text" id="salary" class="w-full p-2 border rounded mt-1" placeholder="Enter Salary" />
+                </div>
+                <div>
+                    <label class="text-gray-600">Link:</label>
+                    <input type="url" id="link" class="w-full p-2 border rounded mt-1" placeholder="Enter Application Link" />
+                </div>
+                <div>
+                    <label class="text-gray-600">Deadline:</label>
+                    <input type="date" id="deadline" class="w-full p-2 border rounded mt-1" />
+                </div>
+                
+            </div>
+            <button onclick="createJobPosting()" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Create Job Posting</button>
+        </div>
+        <div class="container mx-auto px-4 py-8">
+        </div>
+    </div>
+
+
+    <script>
+        function searchStudentApplications() {
+            const srn = document.getElementById('srnInput').value;
+            const job_id = document.getElementById('jobIdInput').value;
+
+            axios.get(`/placement-officer-dashboard/search?srn=${srn}&job_id=${job_id}`)
+                .then(response => {
+                    const applications = response.data.applications;
+                    const tableBody = document.getElementById('resultsTable');
+
+                    // Clear the table first
+                    tableBody.innerHTML = '';
+
+                    if (!applications || applications.length === 0) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'No Applications Found',
+                            text: 'No applications found for the given SRN.',
+                        });
+                        return;
+                    }
+
+                    // Populate the table with applications data
+                    tableBody.innerHTML = applications.map(app => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.app_id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.company_name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.job_id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.app_status}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(app.app_date).toLocaleDateString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${app.offer_status}</td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error fetching student applications:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while fetching student applications.',
+                    });
+                });
+        }
+
+        function createJobPosting() {
+            const job_id = document.getElementById('newJobId').value;
+            const company_name = document.getElementById('companyName').value;
+            const description = document.getElementById('description').value;
+            const salary = document.getElementById('salary').value;
+            const link = document.getElementById('link').value;
+            const deadline = document.getElementById('deadline').value;
+
+            axios.post('/job-posting', { job_id, company_name, description, salary, link, deadline })
+                .then(response => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Job Posting Created',
+                        text: response.data.message,
+                    });
+
+                    // Clear the input fields
+                    document.getElementById('newJobId').value = '';
+                    document.getElementById('companyName').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('salary').value = '';
+                    document.getElementById('link').value = '';
+                    document.getElementById('deadline').value = '';
+                })
+                .catch(error => {
+                    console.error('Error creating job posting:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while creating the job posting.',
+                    });
+                });
+        }
+
+        function logout() {
+            // Clear any stored session data
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Redirect to home page
+            window.location.href = '/';
+        }
+
+    </script>
+</body>
+</html>
+`

@@ -3,6 +3,8 @@ const router = express.Router();
 const mysql = require('mysql2');
 const path = require('path');
 require('dotenv').config({ path: '../.env' });
+const createCheckApplicationFunction = require('./createCheckApplicationFunction');
+
 
 // Create MySQL connection
 const db = mysql.createConnection({
@@ -15,9 +17,17 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) {
     console.error('Error connecting to database:', err);
-  } else {
-    console.log('Connected to database successfully!');
+  }else {
+    // Create the check application function after successful connection
+    createCheckApplicationFunction(db)
+      .then(() => {
+        console.log('Check application function setup complete');
+      })
+      .catch(err => {
+        console.error('Failed to setup check application function:', err);
+      });
   }
+  
 });
 
 // GET all job postings
@@ -44,23 +54,19 @@ router.get('/', (req, res) => {
 
 // Check if student has applied to a job
 router.post('/check-application', (req, res) => {
-  const { srn, jobId } = req.body;
-    console.log("router:", srn, jobId);
-  const sql = `
-    SELECT COUNT(*) AS hasApplied 
-    FROM APPLICATION 
-    WHERE srn = ? AND job_id = ?
-  `;
-
-  db.query(sql, [srn, jobId], (err, result) => {
-    if (err) {
-      console.error('Error checking application:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
-    res.json({ hasApplied: result[0].hasApplied > 0 });
+    const { srn, jobId } = req.body;
+    //FUNCTION CALL
+    const sql = `SELECT check_student_application(?, ?) AS hasApplied`;
+  
+    db.query(sql, [srn, jobId], (err, result) => {
+      if (err) {
+        console.error('Error checking application:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+  
+      res.json({ hasApplied: result[0].hasApplied });
+    });
   });
-});
 
 // Apply for a job
 router.post('/apply', (req, res) => {
@@ -106,8 +112,6 @@ db.query(`
           console.log('Trigger created successfully!'); 
         }
       });
-    } else {
-      console.log('Trigger already exists.');
     }
   });
 
